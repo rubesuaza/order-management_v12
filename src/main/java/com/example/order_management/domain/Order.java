@@ -20,12 +20,21 @@ public class Order {
     private OrderStatus status;
 
     private Order(UUID customerId, List<OrderItem> items) {
-        this.orderId = UUID.randomUUID();
+        this(UUID.randomUUID(), customerId, items, LocalDateTime.now(), calculateTotal(items), OrderStatus.PENDING);
+    }
+
+    private Order(UUID orderId,
+                  UUID customerId,
+                  List<OrderItem> items,
+                  LocalDateTime createdAt,
+                  Money totalAmount,
+                  OrderStatus status) {
+        this.orderId = Objects.requireNonNull(orderId, "orderId must not be null");
         this.customerId = Objects.requireNonNull(customerId, "customerId must not be null");
-        this.items = Collections.unmodifiableList(new ArrayList<>(items));
-        this.createdAt = LocalDateTime.now();
-        this.totalAmount = calculateTotal(items);
-        this.status = OrderStatus.PENDING;
+        this.items = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNull(items, "items must not be null")));
+        this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
+        this.totalAmount = Objects.requireNonNull(totalAmount, "totalAmount must not be null");
+        this.status = Objects.requireNonNull(status, "status must not be null");
     }
 
     public static Order create(UUID customerId, List<OrderItem> items) {
@@ -35,7 +44,19 @@ public class Order {
         return new Order(customerId, items);
     }
 
-    private Money calculateTotal(List<OrderItem> items) {
+    public static Order restore(UUID orderId,
+                                UUID customerId,
+                                List<OrderItem> items,
+                                LocalDateTime createdAt,
+                                Money totalAmount,
+                                OrderStatus status) {
+        if (items == null || items.isEmpty()) {
+            throw new InvalidOrderStateException("Order must contain at least one item");
+        }
+        return new Order(orderId, customerId, items, createdAt, totalAmount, status);
+    }
+
+    private static Money calculateTotal(List<OrderItem> items) {
         Money total = null;
         for (OrderItem item : items) {
             Money subTotal = item.subTotal();
